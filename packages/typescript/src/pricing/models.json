@@ -1,0 +1,20 @@
+{
+  "openai": {
+    "gpt-4o": { "input": 0.0000025, "output": 0.000010, "cache_read": 0.00000125 },
+    "gpt-4o-mini": { "input": 0.00000015, "output": 0.0000006 },
+    "gpt-4-turbo": { "input": 0.00001, "output": 0.00003 },
+    "gpt-3.5-turbo": { "input": 0.0000005, "output": 0.0000015 },
+    "text-embedding-3-small": { "input": 0.00000002, "output": 0 },
+    "text-embedding-3-large": { "input": 0.00000013, "output": 0 }
+  },
+  "anthropic": {
+    "claude-sonnet-4-6": { "input": 0.000003, "output": 0.000015, "cache_read": 0.0000003 },
+    "claude-haiku-4-5": { "input": 0.0000008, "output": 0.000004 },
+    "claude-opus-4-7": { "input": 0.000015, "output": 0.000075, "cache_read": 0.0000015 },
+    "claude-3-5-sonnet": { "input": 0.000003, "output": 0.000015 }
+  },
+  "google": {
+    "gemini-1.5-pro": { "input": 0.00000125, "output": 0.000005 },
+    "gemini-1.5-flash": { "input": 0.000000075, "output": 0.0000003 }
+  }
+}

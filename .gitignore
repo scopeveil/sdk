@@ -1,0 +1,23 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.vitest-cache/
+.vite/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.python-version
+build/
+dist/
+*.egg-info/
+
+# Editor
+.idea/
+.vscode/
+.DS_Store
+
+# Env / secrets
+.env
+.env.local
