@@ -1,0 +1,49 @@
+{
+  "name": "@scopeveil/sdk",
+  "version": "0.1.0",
+  "description": "Privacy-first cost & latency observability for LLM apps. The SDK ships only metadata — prompt content never leaves your process.",
+  "license": "MIT",
+  "homepage": "https://scopeveil.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scopeveil/sdk.git",
+    "directory": "packages/typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/scopeveil/sdk/issues"
+  },
+  "keywords": [
+    "llm",
+    "openai",
+    "anthropic",
+    "observability",
+    "cost",
+    "latency",
+    "privacy"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --reporter verbose",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  }
+}

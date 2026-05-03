@@ -1,0 +1,13 @@
+{
+  "name": "scopeveil-sdk-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Open-source SDKs for ScopeVeil — TypeScript and Python.",
+  "workspaces": [
+    "packages/typescript"
+  ],
+  "scripts": {
+    "build": "npm run build -w @scopeveil/sdk",
+    "test": "npm test -w @scopeveil/sdk"
+  }
+}

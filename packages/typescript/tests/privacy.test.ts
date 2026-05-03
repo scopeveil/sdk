@@ -1,0 +1,140 @@
+import { describe, expect, it } from 'vitest';
+import { ScopeVeil } from '../src/index.js';
+
+const SENSITIVE_STRINGS = [
+  'this is the secret prompt content',
+  'do not leak this completion text',
+  'system: you are a helpful assistant',
+  'user.email@example.com',
+  'CC# 4242-4242-4242-4242',
+];
+
+describe('SDK privacy guarantees', () => {
+  it('OpenAI wrapper never sends prompt content to the transport', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      seen.push(body);
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+
+    const monitor = new ScopeVeil({
+      apiKey: 'lm_live_test',
+      endpoint: 'http://localhost:51549',
+      fetchFn: fakeFetch,
+      batchSize: 1,
+      flushIntervalMs: 50,
+    });
+
+    const fakeOpenAI = {
+      chat: {
+        completions: {
+          create: async (_args: unknown) => ({
+            model: 'gpt-4o',
+            usage: { prompt_tokens: 100, completion_tokens: 200 },
+            choices: [{ message: { content: SENSITIVE_STRINGS[1] } }],
+          }),
+        },
+      },
+    };
+
+    const wrapped = monitor.wrapOpenAI(fakeOpenAI);
+
+    await wrapped.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: SENSITIVE_STRINGS[2] },
+        { role: 'user', content: SENSITIVE_STRINGS[0] },
+      ],
+      scopeveil_tag: 'unit-test',
+    });
+
+    await monitor.flush();
+    await monitor.close();
+
+    const serialized = JSON.stringify(seen);
+    for (const sensitive of SENSITIVE_STRINGS) {
+      expect(serialized.includes(sensitive)).toBe(false);
+    }
+    expect(seen.length).toBeGreaterThan(0);
+  });
+
+  it('Anthropic wrapper never sends prompt content to the transport', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+
+    const monitor = new ScopeVeil({
+      apiKey: 'lm_live_test',
+      endpoint: 'http://localhost:51549',
+      fetchFn: fakeFetch,
+      batchSize: 1,
+      flushIntervalMs: 50,
+    });
+
+    const fakeAnthropic = {
+      messages: {
+        create: async (_args: unknown) => ({
+          model: 'claude-sonnet-4-6',
+          usage: { input_tokens: 50, output_tokens: 75 },
+          content: [{ type: 'text', text: SENSITIVE_STRINGS[1] }],
+        }),
+      },
+    };
+
+    const wrapped = monitor.wrapAnthropic(fakeAnthropic);
+    await wrapped.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: SENSITIVE_STRINGS[0] }],
+      system: SENSITIVE_STRINGS[2],
+    });
+
+    await monitor.flush();
+    await monitor.close();
+
+    const serialized = JSON.stringify(seen);
+    for (const sensitive of SENSITIVE_STRINGS) {
+      expect(serialized.includes(sensitive)).toBe(false);
+    }
+  });
+
+  it('strips unknown fields via the sanitize allowlist', async () => {
+    let captured: unknown = null;
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      captured = JSON.parse(String(init?.body ?? '{}'));
+      return new Response('', { status: 202 });
+    };
+
+    const monitor = new ScopeVeil({
+      apiKey: 'lm_live_test',
+      fetchFn: fakeFetch,
+      batchSize: 1,
+      flushIntervalMs: 50,
+    });
+
+    monitor.track({
+      provider: 'openai',
+      model: 'gpt-4o',
+      input_tokens: 1,
+      output_tokens: 2,
+      latency_ms: 10,
+      cost_usd: 0.0001,
+      timestamp: new Date().toISOString(),
+      // @ts-expect-error — testing that this is stripped
+      prompt_text: SENSITIVE_STRINGS[0],
+      // @ts-expect-error
+      raw_email: 'user@example.com',
+    });
+
+    await monitor.flush();
+    await monitor.close();
+
+    expect(captured).not.toBeNull();
+    const event = (captured as { events: Record<string, unknown>[] }).events[0]!;
+    expect('prompt_text' in event).toBe(false);
+    expect('raw_email' in event).toBe(false);
+  });
+});

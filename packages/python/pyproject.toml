@@ -1,0 +1,18 @@
+[project]
+name = "scopeveil-sdk"
+version = "0.0.0"
+description = "Privacy-first cost & latency observability for LLM apps (Python SDK — scaffolding)."
+license = { text = "MIT" }
+authors = [{ name = "ScopeVeil" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.urls]
+Homepage = "https://scopeveil.com"
+Source = "https://github.com/scopeveil/sdk"
+Issues = "https://github.com/scopeveil/sdk/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
