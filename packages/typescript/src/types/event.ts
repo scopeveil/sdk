@@ -1,4 +1,12 @@
-export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'mistral' | 'ollama' | 'azure' | 'bedrock';
+export type LLMProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'google'
+  | 'mistral'
+  | 'cohere'
+  | 'ollama'
+  | 'azure'
+  | 'bedrock';
 
 export interface LLMEvent {
   model: string;

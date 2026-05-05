@@ -4,8 +4,13 @@ import { DEFAULT_ENDPOINT } from './generated/defaults.js';
 import { HttpTransport } from './transport/http.js';
 import { EventQueue } from './transport/queue.js';
 import { sanitizeEvent } from './utils/sanitize.js';
-import { wrapOpenAI } from './interceptors/openai.js';
+import { wrapOpenAI, wrapAzureOpenAI } from './interceptors/openai.js';
 import { wrapAnthropic } from './interceptors/anthropic.js';
+import { wrapGoogle } from './interceptors/google.js';
+import { wrapMistral } from './interceptors/mistral.js';
+import { wrapCohere } from './interceptors/cohere.js';
+import { wrapBedrock } from './interceptors/bedrock.js';
+import { wrapOllama } from './interceptors/ollama.js';
 
 export class ScopeVeil {
   private readonly queue: EventQueue;
@@ -57,5 +62,29 @@ export class ScopeVeil {
 
   wrapAnthropic<T extends object>(client: T): T {
     return wrapAnthropic(client, this);
+  }
+
+  wrapGoogle<T extends object>(client: T): T {
+    return wrapGoogle(client, this);
+  }
+
+  wrapMistral<T extends object>(client: T): T {
+    return wrapMistral(client, this);
+  }
+
+  wrapCohere<T extends object>(client: T): T {
+    return wrapCohere(client, this);
+  }
+
+  wrapBedrock<T extends object>(client: T): T {
+    return wrapBedrock(client, this);
+  }
+
+  wrapOllama<T extends object>(client: T): T {
+    return wrapOllama(client, this);
+  }
+
+  wrapAzureOpenAI<T extends object>(client: T): T {
+    return wrapAzureOpenAI(client, this);
   }
 }
