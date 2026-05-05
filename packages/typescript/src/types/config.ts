@@ -1,5 +1,7 @@
 export interface MonitorConfig {
   apiKey: string;
+  /** Optional override of the ingest endpoint. Defaults to the
+   *  ScopeVeil hosted service. Set this only if you self-host. */
   endpoint?: string;
   /** Max events buffered before forced flush. Default 50. */
   batchSize?: number;

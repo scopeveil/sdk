@@ -14,13 +14,20 @@ npm install @scopeveil/sdk
 
 ## Quick start
 
+Add to your `.env` (never commit secrets):
+
+```bash
+SCOPEVEIL_API_KEY=your-key-here
+```
+
+Then in your code:
+
 ```ts
 import OpenAI from 'openai';
 import { ScopeVeil } from '@scopeveil/sdk';
 
 const monitor = new ScopeVeil({
-  apiKey: process.env.SCOPEVEIL_KEY!,
-  endpoint: 'https://ingest.scopeveil.com', // or your self-hosted ingest URL
+  apiKey: process.env.SCOPEVEIL_API_KEY!,
 });
 
 const openai = monitor.wrapOpenAI(new OpenAI());

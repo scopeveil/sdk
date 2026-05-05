@@ -1,5 +1,6 @@
 import type { MonitorConfig } from './types/config.js';
 import type { LLMEvent } from './types/event.js';
+import { DEFAULT_ENDPOINT } from './generated/defaults.js';
 import { HttpTransport } from './transport/http.js';
 import { EventQueue } from './transport/queue.js';
 import { sanitizeEvent } from './utils/sanitize.js';
@@ -18,7 +19,7 @@ export class ScopeVeil {
       throw new Error('ScopeVeil: apiKey is required');
     }
     this.env = config.environment ?? 'production';
-    const endpoint = config.endpoint ?? 'http://localhost:51549';
+    const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
     this.transport = new HttpTransport({
       apiKey: config.apiKey,
       endpoint,

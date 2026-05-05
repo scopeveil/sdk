@@ -49,14 +49,24 @@ jobs:
       - name: install
         run: npm ci --no-audit --no-fund
 
+      # Build-time injection of the default ingest endpoint. Reads from
+      # the SCOPEVEIL_DEFAULT_ENDPOINT GitHub secret; the prebuild/pretest
+      # scripts (scripts/generate-defaults.mjs) write it into
+      # src/generated/defaults.ts. Source tree never contains the literal
+      # URL — only the published dist does.
       - name: test (privacy guards)
+        env:
+          SCOPEVEIL_DEFAULT_ENDPOINT: ${{ secrets.SCOPEVEIL_DEFAULT_ENDPOINT }}
         run: npm test -w @scopeveil/sdk
 
       - name: build
+        env:
+          SCOPEVEIL_DEFAULT_ENDPOINT: ${{ secrets.SCOPEVEIL_DEFAULT_ENDPOINT }}
         run: npm run build -w @scopeveil/sdk
 
       - name: publish
         working-directory: packages/typescript
-        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          SCOPEVEIL_DEFAULT_ENDPOINT: ${{ secrets.SCOPEVEIL_DEFAULT_ENDPOINT }}
+        run: npm publish --provenance --access public
