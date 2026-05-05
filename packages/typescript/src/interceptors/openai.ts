@@ -2,6 +2,23 @@ import type { ScopeVeil } from '../client.js';
 import { hashUserId } from '../utils/hash.js';
 import type { LLMEvent } from '../types/event.js';
 
+/**
+ * Providers que usam shape OpenAI-compatible. Mesmo SDK `openai`
+ * (ou compatível), só muda baseURL + auth. Tudo passa pelo mesmo
+ * wrap; o `provider` reportado distingue billing/cost tracking
+ * no back-end.
+ */
+export type OpenAICompatibleProvider =
+  | 'openai'
+  | 'azure'
+  | 'groq'
+  | 'xai'
+  | 'perplexity'
+  | 'deepseek'
+  | 'together'
+  | 'fireworks'
+  | 'openrouter';
+
 interface OpenAIUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
@@ -49,7 +66,7 @@ function emit(
   errorMessage = '',
   errorCode = '',
   fallbackModel = '',
-  provider: 'openai' | 'azure' = 'openai',
+  provider: OpenAICompatibleProvider = 'openai',
 ) {
   const usage = response.usage ?? {};
   const inputTokens = usage.prompt_tokens ?? 0;
@@ -99,7 +116,7 @@ function extractErrorCode(err: unknown): string {
 export function wrapOpenAI<T extends object>(
   client: T,
   monitor: ScopeVeil,
-  provider: 'openai' | 'azure' = 'openai',
+  provider: OpenAICompatibleProvider = 'openai',
 ): T {
   return new Proxy(client, {
     get(target, prop, receiver) {
@@ -115,7 +132,7 @@ export function wrapOpenAI<T extends object>(
   });
 }
 
-function wrapChat(chat: Record<string, unknown>, monitor: ScopeVeil, provider: 'openai' | 'azure') {
+function wrapChat(chat: Record<string, unknown>, monitor: ScopeVeil, provider: OpenAICompatibleProvider) {
   return new Proxy(chat, {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
@@ -130,7 +147,7 @@ function wrapChat(chat: Record<string, unknown>, monitor: ScopeVeil, provider: '
 function wrapCompletions(
   completions: Record<string, unknown>,
   monitor: ScopeVeil,
-  provider: 'openai' | 'azure',
+  provider: OpenAICompatibleProvider,
 ) {
   const original = completions.create as ((args: unknown) => Promise<unknown>) | undefined;
   if (typeof original !== 'function') return completions;
@@ -170,7 +187,7 @@ function wrapCompletions(
 function wrapEmbeddings(
   embeddings: Record<string, unknown>,
   monitor: ScopeVeil,
-  provider: 'openai' | 'azure',
+  provider: OpenAICompatibleProvider,
 ) {
   const original = embeddings.create as ((args: unknown) => Promise<unknown>) | undefined;
   if (typeof original !== 'function') return embeddings;
@@ -231,4 +248,26 @@ function wrapEmbeddings(
  */
 export function wrapAzureOpenAI<T extends object>(client: T, monitor: ScopeVeil): T {
   return wrapOpenAI(client, monitor, 'azure');
+}
+
+/**
+ * Wrap genérico pra qualquer provider OpenAI-compatible (Groq,
+ * xAI/Grok, Perplexity, DeepSeek, Together, Fireworks, OpenRouter,
+ * etc). Cliente passa o nome do provider explicitamente — sem isso
+ * eventos viriam reportados como 'openai' e o cost tracking ficaria
+ * errado (Groq cobra muito menos que OpenAI direto, etc).
+ *
+ * Uso típico:
+ *   const groq = new OpenAI({
+ *     apiKey: process.env.GROQ_API_KEY,
+ *     baseURL: 'https://api.groq.com/openai/v1',
+ *   });
+ *   const wrapped = monitor.wrapOpenAICompatible(groq, 'groq');
+ */
+export function wrapOpenAICompatible<T extends object>(
+  client: T,
+  monitor: ScopeVeil,
+  provider: OpenAICompatibleProvider,
+): T {
+  return wrapOpenAI(client, monitor, provider);
 }
