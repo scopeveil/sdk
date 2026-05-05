@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true,
-    "outDir": "dist",
+    "outDir": "dist/esm",
     "rootDir": "src"
   },
   "include": ["src"]
