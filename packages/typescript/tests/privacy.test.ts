@@ -126,7 +126,7 @@ describe('SDK privacy guarantees', () => {
       prompt_text: SENSITIVE_STRINGS[0],
       // @ts-expect-error
       raw_email: 'user@example.com',
-      // @ts-expect-error — cost_usd vai server-side, é stripped aqui
+      // @ts-expect-error
       cost_usd: 999,
     });
 
