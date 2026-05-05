@@ -11,7 +11,6 @@ export interface LLMEvent {
   ttft_ms?: number;
   feature_tag?: string;
   user_id_hash?: string;
-  cost_usd: number;
   environment?: 'production' | 'staging' | 'development';
   timestamp: string;
   is_error?: boolean;
