@@ -1,7 +1,7 @@
 {
   "name": "@scopeveil/sdk",
-  "version": "0.2.0",
-  "description": "Privacy-first cost & latency observability for LLM apps. The SDK ships only metadata: prompt content never leaves your process. Cost is computed server-side from raw tokens — clients never report dollar amounts.",
+  "version": "0.2.1",
+  "description": "Privacy-first cost & latency observability for LLM apps. The SDK ships only metadata: prompt content never leaves your process. Cost is computed server-side from raw tokens, clients never report dollar amounts.",
   "license": "MIT",
   "homepage": "https://scopeveil.com",
   "repository": {
@@ -40,6 +40,10 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --reporter verbose",
     "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
