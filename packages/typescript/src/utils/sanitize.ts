@@ -1,9 +1,9 @@
 import type { LLMEvent } from '../types/event.js';
 
 /**
- * Allowlist EXPLÍCITA — última linha de defesa de privacidade.
- * Se algum dia algo passar pelos interceptors, qualquer campo fora dessa
- * lista é descartado silenciosamente antes do envio.
+ * Explicit allowlist: last line of defense for privacy.
+ * If anything ever slips past the interceptors, any field outside this
+ * list is silently dropped before transport.
  */
 const ALLOWED_FIELDS = new Set<keyof LLMEvent>([
   'model',
