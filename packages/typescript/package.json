@@ -1,6 +1,6 @@
 {
   "name": "@scopeveil/sdk",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Privacy-first cost & latency observability for LLM apps. The SDK ships only metadata: prompt content never leaves your process. Cost is computed server-side from raw tokens, clients never report dollar amounts.",
   "license": "MIT",
   "homepage": "https://scopeveil.com",
@@ -37,7 +37,9 @@
     "LICENSE"
   ],
   "scripts": {
+    "prebuild": "node scripts/generate-defaults.mjs",
     "build": "tsc -p tsconfig.json",
+    "pretest": "node scripts/generate-defaults.mjs",
     "test": "vitest run --reporter verbose",
     "prepublishOnly": "npm run build"
   },

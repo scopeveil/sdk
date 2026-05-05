@@ -21,3 +21,6 @@ dist/
 # Env / secrets
 .env
 .env.local
+
+# Build-time generated (URL inlined from .env, never committed)
+packages/typescript/src/generated/
