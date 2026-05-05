@@ -6,7 +6,17 @@ export type LLMProvider =
   | 'cohere'
   | 'ollama'
   | 'azure'
-  | 'bedrock';
+  | 'bedrock'
+  // Providers OpenAI-compatible: usam o mesmo SDK `openai` apontando
+  // pra base URL diferente. Shape de request/response idêntica, só
+  // diferem em pricing e headers de auth.
+  | 'groq'
+  | 'xai'
+  | 'perplexity'
+  | 'deepseek'
+  | 'together'
+  | 'fireworks'
+  | 'openrouter';
 
 export interface LLMEvent {
   model: string;

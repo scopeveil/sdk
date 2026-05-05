@@ -4,7 +4,12 @@ import { DEFAULT_ENDPOINT } from './generated/defaults.js';
 import { HttpTransport } from './transport/http.js';
 import { EventQueue } from './transport/queue.js';
 import { sanitizeEvent } from './utils/sanitize.js';
-import { wrapOpenAI, wrapAzureOpenAI } from './interceptors/openai.js';
+import {
+  wrapOpenAI,
+  wrapAzureOpenAI,
+  wrapOpenAICompatible,
+  type OpenAICompatibleProvider,
+} from './interceptors/openai.js';
 import { wrapAnthropic } from './interceptors/anthropic.js';
 import { wrapGoogle } from './interceptors/google.js';
 import { wrapMistral } from './interceptors/mistral.js';
@@ -86,5 +91,15 @@ export class ScopeVeil {
 
   wrapAzureOpenAI<T extends object>(client: T): T {
     return wrapAzureOpenAI(client, this);
+  }
+
+  /**
+   * Pra providers OpenAI-compatible (Groq, xAI, Perplexity, DeepSeek,
+   * Together, Fireworks, OpenRouter, etc). Você passa o cliente OpenAI
+   * configurado com a baseURL deles + o nome do provider — eventos
+   * vão pro back-end com o provider correto pra cost tracking.
+   */
+  wrapOpenAICompatible<T extends object>(client: T, provider: OpenAICompatibleProvider): T {
+    return wrapOpenAICompatible(client, this, provider);
   }
 }
