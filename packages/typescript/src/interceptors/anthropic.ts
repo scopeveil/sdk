@@ -57,16 +57,19 @@ function wrapMessages(messages: Record<string, unknown>, monitor: ScopeVeil) {
   const create = async function (this: unknown, args: unknown) {
     const ctx = popContext(args);
     const start = performance.now();
+    const fallbackModel =
+      args && typeof args === 'object' && 'model' in args && typeof (args as { model: unknown }).model === 'string'
+        ? ((args as { model: string }).model)
+        : '';
     try {
       const response = (await original.call(this, args)) as AnthropicResponse;
       const usage = response.usage ?? {};
       const inputTokens = usage.input_tokens ?? 0;
       const outputTokens = usage.output_tokens ?? 0;
       const cacheTokens = (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0);
-      const model = response.model ?? '';
       const event: LLMEvent = {
         provider: 'anthropic',
-        model,
+        model: response.model || fallbackModel || 'unknown',
         input_tokens: inputTokens,
         output_tokens: outputTokens,
         cache_tokens: cacheTokens,
@@ -79,10 +82,16 @@ function wrapMessages(messages: Record<string, unknown>, monitor: ScopeVeil) {
       monitor.track(event);
       return response;
     } catch (err) {
-      const e = err as Error;
+      const e = err as Error & { code?: unknown; status?: unknown };
+      const errorCode =
+        typeof e.code === 'string'
+          ? e.code
+          : typeof e.status === 'number'
+          ? `http_${e.status}`
+          : '';
       monitor.track({
         provider: 'anthropic',
-        model: '',
+        model: fallbackModel || 'unknown',
         input_tokens: 0,
         output_tokens: 0,
         latency_ms: Math.round(performance.now() - start),
@@ -90,6 +99,7 @@ function wrapMessages(messages: Record<string, unknown>, monitor: ScopeVeil) {
         timestamp: new Date().toISOString(),
         is_error: true,
         error_message: e.message?.slice(0, 500) ?? '',
+        error_code: errorCode.slice(0, 100),
       });
       throw err;
     }
