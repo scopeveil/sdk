@@ -40,12 +40,24 @@ function popContext(args: unknown): CallContext {
   return ctx;
 }
 
-function emit(monitor: ScopeVeil, ctx: CallContext, response: OpenAIChatResponse, latencyMs: number, isError: boolean, errorMessage = '') {
+function emit(
+  monitor: ScopeVeil,
+  ctx: CallContext,
+  response: OpenAIChatResponse,
+  latencyMs: number,
+  isError: boolean,
+  errorMessage = '',
+  errorCode = '',
+  fallbackModel = '',
+) {
   const usage = response.usage ?? {};
   const inputTokens = usage.prompt_tokens ?? 0;
   const outputTokens = usage.completion_tokens ?? 0;
   const cacheTokens = usage.prompt_tokens_details?.cached_tokens ?? 0;
-  const model = response.model ?? '';
+  // No path de erro response.model é vazio (OpenAI throw antes de
+  // retornar). Fallback pra args.model que o caller passou — sem isso,
+  // ingest validation rejeita o batch inteiro por model="".
+  const model = response.model || fallbackModel || 'unknown';
 
   const event: LLMEvent = {
     provider: 'openai',
@@ -60,9 +72,27 @@ function emit(monitor: ScopeVeil, ctx: CallContext, response: OpenAIChatResponse
     timestamp: new Date().toISOString(),
     is_error: isError,
     error_message: errorMessage.slice(0, 500),
+    error_code: errorCode.slice(0, 100),
   };
 
   monitor.track(event);
+}
+
+function extractModel(args: unknown): string {
+  if (args && typeof args === 'object' && 'model' in args) {
+    const m = (args as { model: unknown }).model;
+    if (typeof m === 'string') return m;
+  }
+  return '';
+}
+
+function extractErrorCode(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const e = err as { code?: unknown; status?: unknown };
+    if (typeof e.code === 'string') return e.code;
+    if (typeof e.status === 'number') return `http_${e.status}`;
+  }
+  return '';
 }
 
 export function wrapOpenAI<T extends object>(client: T, monitor: ScopeVeil): T {
@@ -101,11 +131,20 @@ function wrapCompletions(completions: Record<string, unknown>, monitor: ScopeVei
     const start = performance.now();
     try {
       const response = (await original.call(this, args)) as OpenAIChatResponse;
-      emit(monitor, ctx, response, performance.now() - start, false);
+      emit(monitor, ctx, response, performance.now() - start, false, '', '', extractModel(args));
       return response;
     } catch (err) {
       const e = err as Error;
-      emit(monitor, ctx, {} as OpenAIChatResponse, performance.now() - start, true, e.message);
+      emit(
+        monitor,
+        ctx,
+        {} as OpenAIChatResponse,
+        performance.now() - start,
+        true,
+        e.message,
+        extractErrorCode(err),
+        extractModel(args),
+      );
       throw err;
     }
   };
@@ -125,12 +164,13 @@ function wrapEmbeddings(embeddings: Record<string, unknown>, monitor: ScopeVeil)
   const create = async function (this: unknown, args: unknown) {
     const ctx = popContext(args);
     const start = performance.now();
+    const fallbackModel = extractModel(args);
     try {
       const response = (await original.call(this, args)) as OpenAIChatResponse;
       const usage = response.usage ?? {};
       const event: LLMEvent = {
         provider: 'openai',
-        model: response.model ?? '',
+        model: response.model || fallbackModel || 'unknown',
         input_tokens: usage.prompt_tokens ?? usage.total_tokens ?? 0,
         output_tokens: 0,
         latency_ms: Math.round(performance.now() - start),
@@ -142,6 +182,22 @@ function wrapEmbeddings(embeddings: Record<string, unknown>, monitor: ScopeVeil)
       monitor.track(event);
       return response;
     } catch (err) {
+      const e = err as Error;
+      const event: LLMEvent = {
+        provider: 'openai',
+        model: fallbackModel || 'unknown',
+        input_tokens: 0,
+        output_tokens: 0,
+        latency_ms: Math.round(performance.now() - start),
+        feature_tag: ctx.feature_tag ?? '',
+        user_id_hash: ctx.user_id_hash ?? hashUserId(ctx.user_id ?? ''),
+        environment: ctx.environment ?? monitor.defaultEnvironment(),
+        timestamp: new Date().toISOString(),
+        is_error: true,
+        error_message: e.message.slice(0, 500),
+        error_code: extractErrorCode(err).slice(0, 100),
+      };
+      monitor.track(event);
       throw err;
     }
   };
