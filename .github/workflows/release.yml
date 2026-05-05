@@ -1,15 +1,14 @@
 name: release
 
 # Publica o pacote @scopeveil/sdk no npm quando uma tag `v*` for pushada
-# (ex.: `v0.2.1`, `v1.0.0`, `v0.3.0-beta.1`).
+# (ex.: `v0.2.2`, `v1.0.0`, `v0.3.0-beta.1`).
 #
 # Pra cortar release:
-#   git tag v0.2.1 -m "release notes here"
-#   git push origin v0.2.1
+#   git tag v0.2.2 -m "release notes here"
+#   git push origin v0.2.2
 #
-# A versão do package.json TEM que casar com a tag — `npm publish` checa
-# isso por convenção (não tem failsafe automático, mas o publish vai
-# falhar se a versão já existir no registry).
+# A versão do package.json TEM que casar com a tag. `npm publish` falha
+# se a versão já existe no registry.
 
 on:
   push:
@@ -30,14 +29,10 @@ jobs:
     # Permissões necessárias pra `npm publish --provenance`. Provenance é
     # um attestation SLSA dizendo "este tarball foi gerado por este commit
     # neste workflow run" — o npm guarda e mostra publicamente. Requer
-    # OIDC token, que precisa de id-token: write.
+    # OIDC token, daí id-token: write.
     permissions:
       contents: read
       id-token: write
-
-    defaults:
-      run:
-        working-directory: packages/typescript
 
     steps:
       - uses: actions/checkout@v4
@@ -47,18 +42,21 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
-          cache-dependency-path: packages/typescript/package-lock.json
 
+      # Workspace npm: lockfile na raiz cobre todos os sub-packages.
+      # Tudo abaixo roda da raiz, com `-w @scopeveil/sdk` selecionando
+      # o package alvo. Só o publish precisa do cwd dentro dele.
       - name: install
         run: npm ci --no-audit --no-fund
 
       - name: test (privacy guards)
-        run: npm test
+        run: npm test -w @scopeveil/sdk
 
       - name: build
-        run: npm run build
+        run: npm run build -w @scopeveil/sdk
 
       - name: publish
+        working-directory: packages/typescript
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
