@@ -1,0 +1,64 @@
+name: release
+
+# Publica o pacote @scopeveil/sdk no npm quando uma tag `v*` for pushada
+# (ex.: `v0.2.1`, `v1.0.0`, `v0.3.0-beta.1`).
+#
+# Pra cortar release:
+#   git tag v0.2.1 -m "release notes here"
+#   git push origin v0.2.1
+#
+# A versão do package.json TEM que casar com a tag — `npm publish` checa
+# isso por convenção (não tem failsafe automático, mas o publish vai
+# falhar se a versão já existir no registry).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-sdk
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Permissões necessárias pra `npm publish --provenance`. Provenance é
+    # um attestation SLSA dizendo "este tarball foi gerado por este commit
+    # neste workflow run" — o npm guarda e mostra publicamente. Requer
+    # OIDC token, que precisa de id-token: write.
+    permissions:
+      contents: read
+      id-token: write
+
+    defaults:
+      run:
+        working-directory: packages/typescript
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: packages/typescript/package-lock.json
+
+      - name: install
+        run: npm ci --no-audit --no-fund
+
+      - name: test (privacy guards)
+        run: npm test
+
+      - name: build
+        run: npm run build
+
+      - name: publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

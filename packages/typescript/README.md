@@ -2,9 +2,9 @@
 
 Privacy-first cost & latency observability for LLM apps.
 
-The SDK wraps your existing OpenAI / Anthropic clients and ships only metadata
-— **prompt content, completion text, system prompts and raw user IDs never
-leave your process**. Audit the source on GitHub if you don't believe us.
+The SDK wraps your existing OpenAI / Anthropic clients and ships only metadata.
+**Prompt content, completion text, system prompts and raw user IDs never
+leave your process.** Audit the source on GitHub if you don't believe us.
 
 ## Install
 
@@ -28,7 +28,7 @@ const openai = monitor.wrapOpenAI(new OpenAI());
 const completion = await openai.chat.completions.create({
   model: 'gpt-4o-mini',
   messages: [{ role: 'user', content: 'Hello' }],
-  // Optional context — never sent as prompt content, only metadata
+  // Optional context, never sent as prompt content, only metadata
   // @ts-ignore - extension keys
   scopeveil_tag: 'pdf-summarizer',
 });
@@ -64,8 +64,13 @@ await anthropic.messages.create({
 | `latency_ms`    | `1240`                           |
 | `feature_tag`   | `"pdf-summarizer"`               |
 | `user_id_hash`  | sha256(your user id), never raw  |
-| `cost_usd`      | computed locally from a versioned price table |
 | `timestamp`     | ISO-8601 UTC                     |
+
+> Note: the SDK does not report `cost_usd`. Cost is computed by the ScopeVeil
+> backend from raw token counts using a versioned pricing table. This keeps
+> the SDK auditable (no business logic, no embedded price tables) and allows
+> the platform to update prices, apply per-customer rates, or recompute
+> historical events without an SDK release.
 
 ## What is NEVER captured
 
@@ -76,8 +81,8 @@ await anthropic.messages.create({
 - raw user identifiers (only sha256 is accepted)
 
 This is enforced by:
-1. The SDK's allowlist sanitizer — drops any unknown field before transport.
-2. The ingest API's `Zod.strict()` schema — rejects events containing any
+1. The SDK's allowlist sanitizer: drops any unknown field before transport.
+2. The ingest API's `Zod.strict()` schema: rejects events containing any
    field outside the allowlist, even if the SDK is bypassed.
 
 ## Privacy is tested
@@ -87,4 +92,4 @@ prompt-shaped string makes it into the transport payload.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
