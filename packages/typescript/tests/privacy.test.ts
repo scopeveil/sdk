@@ -101,6 +101,172 @@ describe('SDK privacy guarantees', () => {
     }
   });
 
+  it('Google Gemini wrapper never sends prompt content', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+    const monitor = new ScopeVeil({ apiKey: 'lm_live_test', fetchFn: fakeFetch, batchSize: 1 });
+    const fakeClient = {
+      models: {
+        generateContent: async (_args: unknown) => ({
+          modelVersion: 'gemini-2.0-flash-001',
+          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20 },
+          candidates: [{ content: { parts: [{ text: SENSITIVE_STRINGS[1] }] } }],
+        }),
+      },
+    };
+    const wrapped = monitor.wrapGoogle(fakeClient);
+    await wrapped.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{ role: 'user', parts: [{ text: SENSITIVE_STRINGS[0] }] }],
+    });
+    await monitor.flush();
+    await monitor.close();
+    for (const s of SENSITIVE_STRINGS) {
+      expect(JSON.stringify(seen).includes(s)).toBe(false);
+    }
+  });
+
+  it('Mistral wrapper never sends prompt content', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+    const monitor = new ScopeVeil({ apiKey: 'lm_live_test', fetchFn: fakeFetch, batchSize: 1 });
+    const fakeClient = {
+      chat: {
+        complete: async (_args: unknown) => ({
+          model: 'mistral-large-latest',
+          usage: { prompt_tokens: 10, completion_tokens: 20 },
+          choices: [{ message: { role: 'assistant', content: SENSITIVE_STRINGS[1] } }],
+        }),
+      },
+    };
+    const wrapped = monitor.wrapMistral(fakeClient);
+    await wrapped.chat.complete({
+      model: 'mistral-large-latest',
+      messages: [{ role: 'user', content: SENSITIVE_STRINGS[0] }],
+    });
+    await monitor.flush();
+    await monitor.close();
+    for (const s of SENSITIVE_STRINGS) {
+      expect(JSON.stringify(seen).includes(s)).toBe(false);
+    }
+  });
+
+  it('Cohere wrapper never sends prompt content', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+    const monitor = new ScopeVeil({ apiKey: 'lm_live_test', fetchFn: fakeFetch, batchSize: 1 });
+    const fakeClient = {
+      chat: async () => ({
+        text: SENSITIVE_STRINGS[1],
+        model: 'command-r-plus',
+        usage: { billed_units: { input_tokens: 5, output_tokens: 10 } },
+      }),
+    };
+    const wrapped = monitor.wrapCohere(fakeClient);
+    await wrapped.chat({ model: 'command-r-plus', message: SENSITIVE_STRINGS[0] });
+    await monitor.flush();
+    await monitor.close();
+    for (const s of SENSITIVE_STRINGS) {
+      expect(JSON.stringify(seen).includes(s)).toBe(false);
+    }
+  });
+
+  it('Bedrock wrapper never sends prompt content', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+    const monitor = new ScopeVeil({ apiKey: 'lm_live_test', fetchFn: fakeFetch, batchSize: 1 });
+    class ConverseCommand {
+      constructor(public input: any) {}
+    }
+    const fakeClient = {
+      send: async (_cmd: any) => ({
+        output: { message: { content: [{ text: SENSITIVE_STRINGS[1] }] } },
+        usage: { inputTokens: 10, outputTokens: 20 },
+      }),
+    };
+    const wrapped = monitor.wrapBedrock(fakeClient);
+    await wrapped.send(
+      new ConverseCommand({
+        modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+        messages: [{ role: 'user', content: [{ text: SENSITIVE_STRINGS[0] }] }],
+      }),
+    );
+    await monitor.flush();
+    await monitor.close();
+    for (const s of SENSITIVE_STRINGS) {
+      expect(JSON.stringify(seen).includes(s)).toBe(false);
+    }
+  });
+
+  it('Ollama wrapper never sends prompt content', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+    const monitor = new ScopeVeil({ apiKey: 'lm_live_test', fetchFn: fakeFetch, batchSize: 1 });
+    const fakeClient = {
+      chat: async () => ({
+        model: 'llama3.2',
+        message: { role: 'assistant', content: SENSITIVE_STRINGS[1] },
+        prompt_eval_count: 10,
+        eval_count: 20,
+      }),
+    };
+    const wrapped = monitor.wrapOllama(fakeClient);
+    await wrapped.chat({
+      model: 'llama3.2',
+      messages: [{ role: 'user', content: SENSITIVE_STRINGS[0] }],
+    });
+    await monitor.flush();
+    await monitor.close();
+    for (const s of SENSITIVE_STRINGS) {
+      expect(JSON.stringify(seen).includes(s)).toBe(false);
+    }
+  });
+
+  it('Azure OpenAI wrapper never sends prompt content', async () => {
+    const seen: unknown[] = [];
+    const fakeFetch: typeof fetch = async (_url, init) => {
+      seen.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response('{"accepted":1}', { status: 202 });
+    };
+    const monitor = new ScopeVeil({ apiKey: 'lm_live_test', fetchFn: fakeFetch, batchSize: 1 });
+    const fakeClient = {
+      chat: {
+        completions: {
+          create: async (_args: unknown) => ({
+            model: 'gpt-4o',
+            usage: { prompt_tokens: 10, completion_tokens: 20 },
+            choices: [{ message: { content: SENSITIVE_STRINGS[1] } }],
+          }),
+        },
+      },
+    };
+    const wrapped = monitor.wrapAzureOpenAI(fakeClient);
+    await wrapped.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: SENSITIVE_STRINGS[0] }],
+    });
+    await monitor.flush();
+    await monitor.close();
+    for (const s of SENSITIVE_STRINGS) {
+      expect(JSON.stringify(seen).includes(s)).toBe(false);
+    }
+  });
+
   it('strips unknown fields via the sanitize allowlist', async () => {
     let captured: unknown = null;
     const fakeFetch: typeof fetch = async (_url, init) => {

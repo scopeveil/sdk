@@ -49,6 +49,7 @@ function emit(
   errorMessage = '',
   errorCode = '',
   fallbackModel = '',
+  provider: 'openai' | 'azure' = 'openai',
 ) {
   const usage = response.usage ?? {};
   const inputTokens = usage.prompt_tokens ?? 0;
@@ -60,7 +61,7 @@ function emit(
   const model = response.model || fallbackModel || 'unknown';
 
   const event: LLMEvent = {
-    provider: 'openai',
+    provider,
     model,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
@@ -95,34 +96,42 @@ function extractErrorCode(err: unknown): string {
   return '';
 }
 
-export function wrapOpenAI<T extends object>(client: T, monitor: ScopeVeil): T {
+export function wrapOpenAI<T extends object>(
+  client: T,
+  monitor: ScopeVeil,
+  provider: 'openai' | 'azure' = 'openai',
+): T {
   return new Proxy(client, {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
       if (prop === 'chat' && value && typeof value === 'object') {
-        return wrapChat(value as Record<string, unknown>, monitor);
+        return wrapChat(value as Record<string, unknown>, monitor, provider);
       }
       if (prop === 'embeddings' && value && typeof value === 'object') {
-        return wrapEmbeddings(value as Record<string, unknown>, monitor);
+        return wrapEmbeddings(value as Record<string, unknown>, monitor, provider);
       }
       return value;
     },
   });
 }
 
-function wrapChat(chat: Record<string, unknown>, monitor: ScopeVeil) {
+function wrapChat(chat: Record<string, unknown>, monitor: ScopeVeil, provider: 'openai' | 'azure') {
   return new Proxy(chat, {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
       if (prop === 'completions' && value && typeof value === 'object') {
-        return wrapCompletions(value as Record<string, unknown>, monitor);
+        return wrapCompletions(value as Record<string, unknown>, monitor, provider);
       }
       return value;
     },
   });
 }
 
-function wrapCompletions(completions: Record<string, unknown>, monitor: ScopeVeil) {
+function wrapCompletions(
+  completions: Record<string, unknown>,
+  monitor: ScopeVeil,
+  provider: 'openai' | 'azure',
+) {
   const original = completions.create as ((args: unknown) => Promise<unknown>) | undefined;
   if (typeof original !== 'function') return completions;
 
@@ -131,7 +140,7 @@ function wrapCompletions(completions: Record<string, unknown>, monitor: ScopeVei
     const start = performance.now();
     try {
       const response = (await original.call(this, args)) as OpenAIChatResponse;
-      emit(monitor, ctx, response, performance.now() - start, false, '', '', extractModel(args));
+      emit(monitor, ctx, response, performance.now() - start, false, '', '', extractModel(args), provider);
       return response;
     } catch (err) {
       const e = err as Error;
@@ -144,6 +153,7 @@ function wrapCompletions(completions: Record<string, unknown>, monitor: ScopeVei
         e.message,
         extractErrorCode(err),
         extractModel(args),
+        provider,
       );
       throw err;
     }
@@ -157,7 +167,11 @@ function wrapCompletions(completions: Record<string, unknown>, monitor: ScopeVei
   });
 }
 
-function wrapEmbeddings(embeddings: Record<string, unknown>, monitor: ScopeVeil) {
+function wrapEmbeddings(
+  embeddings: Record<string, unknown>,
+  monitor: ScopeVeil,
+  provider: 'openai' | 'azure',
+) {
   const original = embeddings.create as ((args: unknown) => Promise<unknown>) | undefined;
   if (typeof original !== 'function') return embeddings;
 
@@ -169,7 +183,7 @@ function wrapEmbeddings(embeddings: Record<string, unknown>, monitor: ScopeVeil)
       const response = (await original.call(this, args)) as OpenAIChatResponse;
       const usage = response.usage ?? {};
       const event: LLMEvent = {
-        provider: 'openai',
+        provider,
         model: response.model || fallbackModel || 'unknown',
         input_tokens: usage.prompt_tokens ?? usage.total_tokens ?? 0,
         output_tokens: 0,
@@ -184,7 +198,7 @@ function wrapEmbeddings(embeddings: Record<string, unknown>, monitor: ScopeVeil)
     } catch (err) {
       const e = err as Error;
       const event: LLMEvent = {
-        provider: 'openai',
+        provider,
         model: fallbackModel || 'unknown',
         input_tokens: 0,
         output_tokens: 0,
@@ -208,4 +222,13 @@ function wrapEmbeddings(embeddings: Record<string, unknown>, monitor: ScopeVeil)
       return Reflect.get(target, prop, receiver);
     },
   });
+}
+
+/**
+ * Wrap pra Azure OpenAI: shape idêntica ao OpenAI (mesmo SDK
+ * `openai`, só endpoint+auth diferentes), mas reportamos
+ * `provider: 'azure'` pra distinguir billing/quotas no dashboard.
+ */
+export function wrapAzureOpenAI<T extends object>(client: T, monitor: ScopeVeil): T {
+  return wrapOpenAI(client, monitor, 'azure');
 }
