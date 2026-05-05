@@ -1,5 +1,4 @@
 import type { ScopeVeil } from '../client.js';
-import { calculateCost } from '../pricing/index.js';
 import { hashUserId } from '../utils/hash.js';
 import type { LLMEvent } from '../types/event.js';
 
@@ -74,7 +73,6 @@ function wrapMessages(messages: Record<string, unknown>, monitor: ScopeVeil) {
         latency_ms: Math.round(performance.now() - start),
         feature_tag: ctx.feature_tag ?? '',
         user_id_hash: ctx.user_id_hash ?? hashUserId(ctx.user_id ?? ''),
-        cost_usd: calculateCost('anthropic', model, inputTokens, outputTokens, cacheTokens),
         environment: ctx.environment ?? monitor.defaultEnvironment(),
         timestamp: new Date().toISOString(),
       };
@@ -89,7 +87,6 @@ function wrapMessages(messages: Record<string, unknown>, monitor: ScopeVeil) {
         output_tokens: 0,
         latency_ms: Math.round(performance.now() - start),
         feature_tag: ctx.feature_tag ?? '',
-        cost_usd: 0,
         timestamp: new Date().toISOString(),
         is_error: true,
         error_message: e.message?.slice(0, 500) ?? '',

@@ -121,12 +121,13 @@ describe('SDK privacy guarantees', () => {
       input_tokens: 1,
       output_tokens: 2,
       latency_ms: 10,
-      cost_usd: 0.0001,
       timestamp: new Date().toISOString(),
       // @ts-expect-error — testing that this is stripped
       prompt_text: SENSITIVE_STRINGS[0],
       // @ts-expect-error
       raw_email: 'user@example.com',
+      // @ts-expect-error — cost_usd vai server-side, é stripped aqui
+      cost_usd: 999,
     });
 
     await monitor.flush();
@@ -136,5 +137,6 @@ describe('SDK privacy guarantees', () => {
     const event = (captured as { events: Record<string, unknown>[] }).events[0]!;
     expect('prompt_text' in event).toBe(false);
     expect('raw_email' in event).toBe(false);
+    expect('cost_usd' in event).toBe(false); // proteção contra adulteração de billing
   });
 });

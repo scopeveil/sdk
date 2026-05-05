@@ -16,7 +16,6 @@ const ALLOWED_FIELDS = new Set<keyof LLMEvent>([
   'ttft_ms',
   'feature_tag',
   'user_id_hash',
-  'cost_usd',
   'environment',
   'timestamp',
   'is_error',
