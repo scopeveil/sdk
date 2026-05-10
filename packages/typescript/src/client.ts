@@ -1,6 +1,6 @@
 import type { MonitorConfig } from './types/config.js';
 import type { LLMEvent } from './types/event.js';
-import { DEFAULT_ENDPOINT } from './generated/defaults.js';
+import { DEFAULT_ENDPOINT, DEFAULT_GATEWAY_ENDPOINT } from './generated/defaults.js';
 import { HttpTransport } from './transport/http.js';
 import { EventQueue } from './transport/queue.js';
 import { sanitizeEvent } from './utils/sanitize.js';
@@ -101,5 +101,31 @@ export class ScopeVeil {
    */
   wrapOpenAICompatible<T extends object>(client: T, provider: OpenAICompatibleProvider): T {
     return wrapOpenAICompatible(client, this, provider);
+  }
+
+  /**
+   * Returns the ScopeVeil Gateway base URL — useful when configuring
+   * the official OpenAI SDK (or any OpenAI-compatible client) to route
+   * requests through ScopeVeil. Pass it as `baseURL`:
+   *
+   *     import OpenAI from 'openai';
+   *     import { ScopeVeil } from '@scopeveil/sdk';
+   *
+   *     const openai = new OpenAI({
+   *       apiKey: process.env.SCOPEVEIL_API_KEY,
+   *       baseURL: ScopeVeil.gatewayBaseURL(),
+   *     });
+   *
+   *     const r = await openai.chat.completions.create({
+   *       model: 'anthropic/claude-sonnet-4-6',
+   *       messages: [{ role: 'user', content: 'hi' }],
+   *     });
+   *
+   * Self-hosted users override by passing their own URL:
+   *
+   *     baseURL: ScopeVeil.gatewayBaseURL('https://gateway.mycompany.com/v1')
+   */
+  static gatewayBaseURL(override?: string): string {
+    return override ?? DEFAULT_GATEWAY_ENDPOINT ?? '';
   }
 }
